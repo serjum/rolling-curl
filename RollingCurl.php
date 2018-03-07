@@ -298,15 +298,12 @@ class RollingCurl {
         $master = curl_multi_init();        
 
         // start the first batch of requests
-//        for ($i = 0; $i < $this->window_size; $i++) {
         $i = 0;
         foreach ($this->requests as $index => $request) {
-
             if ($i >= $this->window_size) {
                 break;
             }
             $i++;
-//        }
             $ch = curl_init();
 
             $options = $this->get_options($request);
