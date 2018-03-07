@@ -1,4 +1,6 @@
 <?php
+//@TODO update example and readme
+
 /*
 authored by Josh Fraser (www.joshfraser.com)
 released under Apache License 2.0

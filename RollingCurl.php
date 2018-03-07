@@ -24,20 +24,23 @@ class RollingCurlRequest {
      * @param  $post_data
      * @param  $headers
      * @param  $options
-     * @return void
+     * @param null $index
      */
-    function __construct($url, $method = "GET", $post_data = null, $headers = null, $options = null) {
+    function __construct($url, $method = "GET", $post_data = null, $headers = null, $options = null, $index = null)
+    {
         $this->url = $url;
         $this->method = $method;
         $this->post_data = $post_data;
         $this->headers = $headers;
         $this->options = $options;
+        $this->index = $index;
     }
 
     /**
      * @return void
      */
     public function __destruct() {
+        $this->url = $this->method = $this->post_data = $this->headers = $this->options = null;
         unset($this->url, $this->method, $this->post_data, $this->headers, $this->options);
     }
 }
@@ -85,12 +88,12 @@ class RollingCurl {
      * Set your base options that you want to be used with EVERY request.
      */
     protected $options = array(
-		CURLOPT_SSL_VERIFYPEER => 0,
+        CURLOPT_SSL_VERIFYPEER => 0,
         CURLOPT_RETURNTRANSFER => 1,
         CURLOPT_CONNECTTIMEOUT => 30,
         CURLOPT_TIMEOUT => 30
-	);
-	
+    );
+
     /**
      * @var array
      */
@@ -116,6 +119,10 @@ class RollingCurl {
      * All returns of requests
      */
     private $returns = array();
+
+    public $registerReturns = true;
+
+    public $running = false;
 
     /**
      * @param  $callback
@@ -161,11 +168,13 @@ class RollingCurl {
      * Add a request to the request queue
      *
      * @param Request $request
-     * @return bool
+     * @return int
      */
     public function add($request) {
-         $this->requests[] = $request;
-         return true;
+        $this->requests[] = $request;
+        $keys = array_keys($this->requests);
+        $index =  array_pop($keys);
+        return $index;
     }
 
     /**
@@ -192,11 +201,12 @@ class RollingCurl {
      * @param  $post_data
      * @param  $headers
      * @param  $options
-     * @return bool
+     * @return int
      */
     public function request($url, $method = "GET", $post_data = null, $headers = null, $options = null) {
-         $this->requests[] = new RollingCurlRequest($url, $method, $post_data, $headers, $options);
-         return true;
+      $this->requests[] = new RollingCurlRequest($url, $method, $post_data, $headers, $options);
+      $index =  array_pop(array_keys($this->requests));
+      return  $index;
     }
 
     /**
@@ -260,10 +270,9 @@ class RollingCurl {
             if (is_callable($this->callback)){
                 call_user_func($callback, $output, $info, $request);
             }
-        }
-		else
+        } else
             return $output;
-	return true;
+        return true;
     }
 
     /**
@@ -289,22 +298,30 @@ class RollingCurl {
         $master = curl_multi_init();        
 
         // start the first batch of requests
-        for ($i = 0; $i < $this->window_size; $i++) {
+//        for ($i = 0; $i < $this->window_size; $i++) {
+        $i = 0;
+        foreach ($this->requests as $index => $request) {
+
+            if ($i >= $this->window_size) {
+                break;
+            }
+            $i++;
+//        }
             $ch = curl_init();
 
-            $options = $this->get_options($this->requests[$i]);
+            $options = $this->get_options($request);
 
             curl_setopt_array($ch,$options);
             curl_multi_add_handle($master, $ch);
 
             // Add to our request Maps
-            $key = (string) $ch;
-            $this->requestMap[$key] = $i;
+            $key = (string)$ch;
+            $this->requestMap[$key] = $index;
         }
 
         do {
-            while(($execrun = curl_multi_exec($master, $running)) == CURLM_CALL_MULTI_PERFORM);
-            if($execrun != CURLM_OK) {
+            while (($execrun = curl_multi_exec($master, $this->running)) == CURLM_CALL_MULTI_PERFORM) ;
+            if ($execrun != CURLM_OK) {
                 break;
             }
             // a request was just completed -- find out which one
@@ -314,31 +331,41 @@ class RollingCurl {
                 $info = curl_getinfo($done['handle']);
                 $output = curl_multi_getcontent($done['handle']);
 
-                array_push($this->returns, array(
-                    'return'    =>  $output,
-                    'info'      =>  $info,
-                ));
+                if($this->registerReturns) {
+                    array_push($this->returns, array(
+                        'return' => $output,
+                        'info' => $info,
+                    ));
+                }
 
                 // send the return values to the callback function.
                 $callback = $this->callback;
-                if (is_callable($callback)){
-	            $key = (string)$done['handle'];
+                if (is_callable($callback)) {
+                    $key = (string)$done['handle'];
                     $request = $this->requests[$this->requestMap[$key]];
-                    unset($this->requestMap[$key]);
+                    if(empty($request->index)) {
+                        $request->index = $this->requestMap[$key];
+                    }
                     call_user_func($callback, $output, $info, $request);
+
+                    $this->requests[$this->requestMap[$key]] = null;
+                    unset($this->requests[$this->requestMap[$key]]);
+                    $this->requestMap[$key] = null;
+                    unset($this->requestMap[$key]);
                 }
+                $callback = $output = $info = null;
 
                 // start a new request (it's important to do this before removing the old one)
-                if ($i < sizeof($this->requests) && isset($this->requests[$i]) && $i < count($this->requests)) {
+                if ($index < sizeof($this->requests) && isset($this->requests[$index]) && $index < count($this->requests)) {
                     $ch = curl_init();
-                    $options = $this->get_options($this->requests[$i]);
-                    curl_setopt_array($ch,$options);
+                    $options = $this->get_options($this->requests[$index]);
+                    curl_setopt_array($ch, $options);
                     curl_multi_add_handle($master, $ch);
 
                     // Add to our request Maps
-                    $key = (string) $ch;
-                    $this->requestMap[$key] = $i;
-                    $i++;
+                    $key = (string)$ch;
+                    $this->requestMap[$key] = $index;
+                    $index++;
                 }
 
                 // remove the curl handle that just completed
@@ -347,11 +374,11 @@ class RollingCurl {
             }
 
             // Block for data in / output; error handling is done by curl_multi_exec
-            if ($running) {
+            if ($this->running) {
                 curl_multi_select($master, $this->timeout);
             }
 
-        } while ($running);
+        } while ($this->running);
         curl_multi_close($master);
         return true;
     }
@@ -373,12 +400,15 @@ class RollingCurl {
 		if (( ini_get('safe_mode') == 'Off' || !ini_get('safe_mode') )
             && ini_get('open_basedir') == '') {
             $options[CURLOPT_FOLLOWLOCATION] = 1;
-			$options[CURLOPT_MAXREDIRS] = 5;
+            $options[CURLOPT_MAXREDIRS] = 5;
         }
         $headers = $this->__get('headers');
 
-		// append custom options for this specific request
-		if ($request->options) {
+        // append custom options for this specific request
+        if (!empty($request->options)) {
+            if (empty($options)) {
+                $options = [];
+            }
             $options = $request->options + $options;
         }
 
@@ -407,10 +437,15 @@ class RollingCurl {
         return $options;
     }
 
+    public function getRequestsCount() {
+        return count($this->requests);
+    }
+
     /**
      * @return void
      */
     public function __destruct() {
+        $this->window_size= $this->callback= $this->options= $this->headers= $this->requests = null;
         unset($this->window_size, $this->callback, $this->options, $this->headers, $this->requests);
-	}
+	  }
 }
