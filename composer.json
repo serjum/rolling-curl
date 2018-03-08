@@ -1,5 +1,5 @@
 {
-  "name": "serjum/rolling-curl",
+  "name": "serjum/rolling-curl-dev",
   "description": "Rolling-Curl Fork: A more efficient multi-curl library for PHP",
   "keywords": [
     "php curl",
