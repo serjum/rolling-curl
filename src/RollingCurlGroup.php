@@ -5,6 +5,9 @@
  * Released under Apache License 2.0
  */
 
+namespace Serjum\RollingCurl;
+use \Exception;
+
 class RollingCurlGroupException extends Exception {
 }
 

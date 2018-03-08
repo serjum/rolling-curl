@@ -1,12 +1,15 @@
-<?php 
+<?php
 /*
 Authored by Josh Fraser (www.joshfraser.com)
 Released under Apache License 2.0
 
 Maintained by Alexander Makarov, http://rmcreative.ru/
 
-$Id$
 */
+
+namespace Serjum\RollingCurl;
+use \Exception;
+
 
 /**
  * Class that represent a single curl request
@@ -60,7 +63,7 @@ class RollingCurl {
      * @var int
      *
      * Window size is the max number of simultaneous connections allowed.
-	 * 
+	 *
      * REMEMBER TO RESPECT THE SERVERS:
      * Sending too many requests at one time can easily be perceived
      * as a DOS attack. Increase this window_size if you are making requests
@@ -257,7 +260,7 @@ class RollingCurl {
      * @return string
      */
     private function single_curl() {
-        $ch = curl_init();		
+        $ch = curl_init();
         $request = array_shift($this->requests);
         $options = $this->get_options($request);
         curl_setopt_array($ch,$options);
@@ -290,12 +293,12 @@ class RollingCurl {
         // make sure the rolling window isn't greater than the # of urls
         if (sizeof($this->requests) < $this->window_size)
             $this->window_size = sizeof($this->requests);
-        
+
         if ($this->window_size < 2) {
             throw new RollingCurlException("Window size must be greater than 1");
         }
 
-        $master = curl_multi_init();        
+        $master = curl_multi_init();
 
         // start the first batch of requests
         $i = 0;
@@ -421,7 +424,7 @@ class RollingCurl {
             $options[CURLOPT_HEADER] = 0;
             $options[CURLOPT_HTTPHEADER] = $headers;
         }
-        
+
         // Due to a bug in cURL CURLOPT_WRITEFUNCTION must be defined as the last option
         // Otherwise it doesn't register. So let's unset and set it again
         // See http://stackoverflow.com/questions/15937055/curl-writefunction-not-being-called
