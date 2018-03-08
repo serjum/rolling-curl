@@ -39,6 +39,5 @@
     "psr-4": {
       "Serjum\\RollingCurl\\": "src/"
     }
-  },
-  "minimum-stability": "dev"
+  }
 }
