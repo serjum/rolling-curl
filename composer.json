@@ -1,7 +1,6 @@
 {
   "name": "serjum/rolling-curl",
   "description": "Rolling-Curl Fork: A more efficient multi-curl library for PHP",
-  "type": "library",
   "keywords": [
     "php curl",
     "curl",
@@ -11,31 +10,35 @@
     "laravel"
   ],
   "homepage": "https://github.com/serjum/rolling-curl",
-  "license": "Apache 2.0",
+  "license": "Apache-2.0",
   "authors": [
     {
+      "name": "Sergiu Manea",
+      "homepage": "https://github.com/serjum/rolling-curl",
+      "role": "Developer"
+    },
+    {
       "name": "Josh Fraser",
+      "email": "joshfraz@gmail.com",
       "homepage": "joshfraser.com",
       "role": "Developer"
     },
     {
       "name": "Alexander Makarov",
+      "email": "sam@rmcreative.ru",
       "homepage": "rmcreative.ru",
-      "role": "Developer"
-    },
-    {
-      "name": "Sergiu Manea",
-      "homepage": "https://github.com/serjum/rolling-curl",
       "role": "Developer"
     }
   ],
   "require": {
-    "php": ">=5.6.4"
+    "php": ">=5.3.0",
+    "ext-curl": "*",
+    "lib-curl": "*"
   },
   "autoload": {
     "psr-4": {
-      "Serjum\\RollingCurl\\": "src"
+      "Serjum\\RollingCurl\\": "src/"
     }
   },
-  "minimum-stability": "stable"
+  "minimum-stability": "dev"
 }
